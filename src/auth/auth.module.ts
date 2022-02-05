@@ -7,11 +7,12 @@ import { AuthService } from './auth.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/user.entity';
 import { AuthController } from './auth.controller';
+import { UsersTokens } from '../users/users_tokens.entity';
 
 @Module({
   imports: [
     PassportModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, UsersTokens]),
     JwtModule.register({
       secret: jwtConstants.secret,
       signOptions: {

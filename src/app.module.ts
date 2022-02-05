@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './users/user.entity';
+import { UsersTokens } from './users/users_tokens.entity';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { User } from './users/user.entity';
       username: 'api',
       password: 'sewo67we0y',
       database: 'lk',
-      entities: [User],
+      entities: [User, UsersTokens],
       timezone: '+05:00',
       dateStrings: true,
       debug: false,

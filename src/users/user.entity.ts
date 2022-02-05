@@ -11,6 +11,21 @@ export class User {
   @Column()
   password: string;
 
+  @Column()
+  db_id: number;
+
+  @Column()
+  fname: string;
+
+  @Column()
+  sname: string;
+
+  @Column()
+  email: string;
+
+  @Column()
+  salt: string;
+
   @Column({ default: 1 })
   active: number;
 
