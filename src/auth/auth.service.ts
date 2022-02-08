@@ -33,20 +33,20 @@ export class AuthService {
 
     try {
       if (!userDto.password)
-        throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+        throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
 
       let userData = await this.usersRepository.findOne({
         where: { login: userDto.username, active: MoreThanOrEqual(0) },
       });
 
       if (userData !== undefined && userData.active === 0)
-        throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+        throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
 
       if (userData === undefined) {
         const ad_user = await this.ldapAuth(userDto.username, userDto.password);
         if (ad_user) {
           userData = await this.registration(userDto);
-        } else throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+        } else throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
 
         return this.setTokens(userData.id);
       }
@@ -63,12 +63,12 @@ export class AuthService {
         if (userData.password === passhash) {
           return this.setTokens(userData.id);
         } else {
-          throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+          throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
         }
       } else if (userData.ldap === 1) {
         const ad_user = await this.ldapAuth(userData.login, userDto.password);
         if (!ad_user)
-          throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+          throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
         return this.setTokens(userData.id);
       }
     } catch (error) {
@@ -78,8 +78,8 @@ export class AuthService {
 
   async setTokens(userId, usersTokens: UsersTokens = null): Promise<TokensDto> {
     const payload = {
-      custom: 0,
-      username: {
+      type: 'short',
+      userdata: {
         id: userId,
         login: '',
       },
@@ -106,6 +106,7 @@ export class AuthService {
     }
 
     await this.usersTokensRepository.save(usersTokens);
+
     return {
       access_token,
       refresh_token,
@@ -127,7 +128,7 @@ export class AuthService {
           resolve(!err);
         });
       } catch (e) {
-        throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+        throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
       }
     });
   }
@@ -141,7 +142,7 @@ export class AuthService {
       );
 
       if (res_db_id.length === 0)
-        throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+        throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
 
       const db_id = res_db_id[0].db_id;
 
@@ -183,7 +184,7 @@ export class AuthService {
       }
       return userData;
     } catch (e) {
-      throw new HttpException('Bad Registration', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Bad Registration', HttpStatus.UNAUTHORIZED);
     }
   }
 
@@ -238,6 +239,8 @@ export class AuthService {
 
     if (userData) {
       return this.setTokens(userData.user_id, userData);
+    } else {
+      throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
     }
   }
 }

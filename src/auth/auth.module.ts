@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from './constants';
@@ -16,7 +16,7 @@ import { UsersTokens } from '../users/users_tokens.entity';
     JwtModule.register({
       secret: jwtConstants.secret,
       signOptions: {
-        expiresIn: '30m',
+        expiresIn: jwtConstants.expiresIn,
         audience: ['lk', 'api', 'drive'],
         issuer: 'api',
       },
