@@ -14,9 +14,20 @@ import {
 import { UserDto } from './dto/user.dto';
 import { v4 } from 'uuid';
 import * as ldap from 'ldapjs';
-import { RefreshTokenDto } from './dto/refreshToken.dto'
-import { UsersTokens } from '../users/users_tokens.entity'
+import { RefreshTokenDto } from './dto/refreshToken.dto';
+import { UsersTokens } from '../users/users_tokens.entity';
 import * as crypto from 'crypto';
+
+interface IUserData {
+  id: number;
+  admin?: number;
+  login?: string;
+  fname?: string;
+  sname?: string;
+  email?: string;
+  roles?: string[];
+  roles_rules?: object;
+}
 
 @Injectable()
 export class AuthService {
@@ -29,8 +40,6 @@ export class AuthService {
   ) {}
 
   async login(userDto: UserDto): Promise<TokensDto> {
-
-
     try {
       if (!userDto.password)
         throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
@@ -46,7 +55,8 @@ export class AuthService {
         const ad_user = await this.ldapAuth(userDto.username, userDto.password);
         if (ad_user) {
           userData = await this.registration(userDto);
-        } else throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
+        } else
+          throw new HttpException('UnauthorizedError', HttpStatus.UNAUTHORIZED);
 
         return this.setTokens(userData.id);
       }
@@ -76,13 +86,20 @@ export class AuthService {
     }
   }
 
-  async setTokens(userId, usersTokens: UsersTokens = null): Promise<TokensDto> {
+  async setTokens(
+    userId,
+    usersTokens: UsersTokens = null,
+    type = 'short',
+  ): Promise<TokensDto> {
+    let userdata: IUserData = {
+      id: userId,
+    };
+    if (type === 'short') {
+      userdata = await this.getUserData(userId);
+    }
     const payload = {
-      type: 'short',
-      userdata: {
-        id: userId,
-        login: '',
-      },
+      type,
+      userdata,
     };
 
     const access_token = this.jwtService.sign(payload);
@@ -227,6 +244,67 @@ export class AuthService {
 
       client.unbind();
     });
+  }
+
+  async getUserData(userId): Promise<IUserData> {
+    const user = await this.usersRepository.findOne({
+      select: ['id', 'login', 'fname', 'sname', 'email', 'admin'],
+      where: { id: userId, active: 1 },
+    });
+
+    return { ...user };
+    /*const userData: IUserData = { ...user, roles_rules: {}, roles: [] };
+
+    const sql = `SELECT roles.id, IF(m.module_name IS NOT NULL, m.module_name, 
+                  JSON_UNQUOTE(JSON_EXTRACT(roles.\`data\`, '$.module_name'))) as name, 
+                  roles.\`data\`, attrs 
+                FROM lk.roles 
+                    LEFT JOIN lk.modules as m ON m.id = roles.module_id
+                            WHERE roles.id IN (
+                              SELECT ru.role_id FROM lk.roles_users as ru 
+                              WHERE (
+                                (ru.child_id = ? AND ru.child_type = 'u') OR (ru.child_id IN (
+                                  SELECT gu.group_id FROM lk.groups_users as gu 
+                                  LEFT JOIN lk.groups as g ON g.id = gu.group_id
+                                  WHERE gu.child_id = ? AND gu.child_type = 'u' AND g.active = 1
+                                ) AND ru.child_type = 'g')
+                              )
+                            ) AND roles.active = 1`;
+    const res_roles = await getManager().query(sql, [userId, userId]);
+
+    if (res_roles.length > 0) {
+      const roles_rules = {};
+      const roles = [];
+      for (const role of res_roles) {
+        const next_data = JSON.parse(role.data);
+        const next_attr = JSON.parse(role.attrs);
+
+        if (!roles_rules[role.name]) {
+          roles_rules[role.name] = role;
+          roles_rules[role.name]['data'] = next_data;
+          roles_rules[role.name]['attrs'] = next_attr;
+        } else {
+          roles_rules[role.name]['attrs'] = [
+            ...roles_rules[role.name]['attrs'],
+            ...next_attr,
+          ];
+
+          const new_data = roles_rules[role.name]['data'];
+          if (Object.keys(next_data).length > 0) {
+            for (const k in new_data) {
+              if (next_data[k] > new_data[k]) new_data[k] = next_data[k];
+            }
+          }
+          roles_rules[role.name]['data'] = new_data;
+        }
+        if (roles_rules[role.name]['data']['open'] === 1) {
+          roles.push(role.name);
+        }
+      }
+      userData.roles_rules = roles_rules;
+      userData.roles = roles;
+    }
+    return userData;*/
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<TokensDto> {

@@ -26,9 +26,15 @@ export class User {
   @Column()
   salt: string;
 
+  @Column()
+  data: string;
+
   @Column({ default: 1 })
   active: number;
 
   @Column({ default: 1 })
   ldap: number;
+
+  @Column({ default: 0 })
+  admin: number;
 }
